@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EMBU UNIVERSITY DATING APP ❤️</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+body{background:linear-gradient(135deg,#ff006a,#ff8a00);min-height:100vh}
+.card{max-width:430px;margin:15px auto;background:white;border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+h1{text-align:center;color:#ff006a;font-size:22px}
+input,select,button{width:100%;padding:13px;margin:7px 0;border-radius:12px;border:1px solid #ddd;font-size:15px}
+button{background:#ff006a;color:white;border:none;font-weight:bold;cursor:pointer}
+button:hover{background:black}
+.user{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #eee;cursor:pointer}
+.user img{width:50px;height:50px;border-radius:50%;object-fit:cover}
+#chatBox{height:280px;overflow-y:auto;border:1px solid #eee;padding:10px;border-radius:10px;background:#fafafa}
+.msg{padding:8px 12px;margin:5px;border-radius:15px;max-width:80%;word-break:break-word}
+.me{background:#ff006a;color:white;margin-left:auto}
+.them{background:#e5e5e5}
+video{width:100%;border-radius:15px;background:black;margin:5px 0}
+.earn{background:linear-gradient(90deg,gold,orange);padding:12px;border-radius:12px;text-align:center;font-weight:bold;margin:10px 0;color:black}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="card" id="authDiv">
+<h1>❤️ EMBU UNIVERSITY DATING</h1>
+<p style="text-align:center;font-size:13px">Embu Uni Students Only • 18+ • Free Chat & Video</p>
+<div class="earn">💰 YOUR EARNINGS: <span id="earnCount">0</span> Users = KSh <span id="earnKsh">0</span><br><small>10 KSH per signup → 0746970435</small></div>
+<input id="email" placeholder="University Email e.g brian@embuni.ac.ke">
+<input id="password" type="password" placeholder="Create Password (6+ chars)">
+<input id="fullname" placeholder="Full Name e.g Brian Mutwiri">
+<select id="gender"><option value="Male">Male</option><option value="Female">Female</option></select>
+<input id="course" placeholder="Course & Year e.g BSc IT Year 2">
+<button onclick="signup()">CREATE ACCOUNT - FREE</button>
+<button onclick="login()" style="background:#111">ALREADY HAVE ACCOUNT? LOGIN</button>
+<p style="font-size:11px;text-align:center;margin-top:8px">By joining you confirm 18+ and respect others. No nudes/harassment = instant ban.</p>
+</div>
+
+<div class="card hidden" id="appDiv">
+<h1 id="welcome"></h1>
+<button onclick="logout()" style="background:grey;width:auto;padding:6px 12px;float:right;font-size:12px">Logout</button>
+<div style="clear:both"></div>
+<div class="earn" style="font-size:13px">My Call ID: <b id="myPeerId">loading...</b> <button onclick="copyMyId()" style="width:auto;padding:5px 10px;margin-left:5px">Copy</button></div>
+<h3>🔥 Embu Students Online</h3>
+<div id="usersList">Loading students...</div>
+<h3>💬 Free Chat</h3>
+<div id="chatBox"></div>
+<input id="chatInput" placeholder="Type message to your crush...">
+<button onclick="sendMsg()">Send Message - FREE</button>
+<h3>📹 Free Video Call</h3>
+<video id="myVideo" autoplay muted playsinline></video>
+<video id="otherVideo" autoplay playsinline></video>
+<input id="callId" placeholder="Paste Friend's Call ID here">
+<button onclick="startCall()">Start Video Call - FREE</button>
+</div>
+
+<script>
+// YOUR REAL FIREBASE CONFIG - ALREADY INSERTED
+const firebaseConfig = {
+  apiKey: "AIzaSyBebhRA-CtgGIgrBFrkWMcTrNYqqJmK4x4",
+  authDomain: "embu-university-dating-app.firebaseapp.com",
+  projectId: "embu-university-dating-app",
+  storageBucket: "embu-university-dating-app.firebasestorage.app",
+  messagingSenderId: "501538205532",
+  appId: "1:501538205532:web:686b95379100334e45db99",
+  measurementId: "G-9FQ6BQ84YE"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser=null, selectedUser=null, peer=null, myStream=null;
+
+function signup(){
+ const e=document.getElementById("email").value.trim();
+ const p=document.getElementById("password").value;
+ const n=document.getElementById("fullname").value.trim();
+ const g=document.getElementById("gender").value;
+ const c=document.getElementById("course").value.trim();
+ if(!e||!p||!n||!c) return alert("Fill all fields");
+ if(p.length<6) return alert("Password must be 6+ characters");
+ auth.createUserWithEmailAndPassword(e,p).then(cred=>{
+   return db.collection("users").doc(cred.user.uid).set({
+     uid:cred.user.uid, email:e, name:n, gender:g, course:c, created:firebase.firestore.FieldValue.serverTimestamp(),
+     photo:`https://i.pravatar.cc/150?u=${e}`
+   });
+ }).then(()=>{
+   db.collection("stats").doc("earnings").set({total: firebase.firestore.FieldValue.increment(1)}, {merge:true});
+   db.collection("earnings_log").add({email:e, amount:10, admin:"rufftone136@gmail.com", mpesa:"0746970435", time:Date.now()});
+   alert("Account Created! Welcome to Embu Dating ❤️ You earned 10 KSH!");
+ }).catch(err=>alert(err.message));
+}
+
+function login(){
+ const e=document.getElementById("email").value;
+ const p=document.getElementById("password").value;
+ auth.signInWithEmailAndPassword(e,p).catch(err=>alert(err.message));
+}
+
+auth.onAuthStateChanged(user=>{
+ if(user){
+   currentUser=user;
+   document.getElementById("authDiv").classList.add("hidden");
+   document.getElementById("appDiv").classList.remove("hidden");
+   document.getElementById("welcome").innerText="Hi, "+user.email.split("@")[0]+" ❤️";
+   initPeer();
+   loadUsers();
+   loadEarnings();
+   navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(s=>{myStream=s; document.getElementById("myVideo").srcObject=s;}).catch(()=>{});
+ } else {
+   document.getElementById("authDiv").classList.remove("hidden");
+   document.getElementById("appDiv").classList.add("hidden");
+ }
+});
+
+function loadUsers(){
+ db.collection("users").onSnapshot(snap=>{
+   const list=document.getElementById("usersList");
+   list.innerHTML="";
+   let count=0;
+   snap.forEach(doc=>{
+     const u=doc.data();
+     if(currentUser && u.uid==currentUser.uid) return;
+     count++;
+     list.innerHTML+=`<div class="user" onclick="selectUser('${u.uid}','${u.name}')"><img src="${u.photo}"><div><b>${u.name}</b><br><small>${u.course} • ${u.gender}</small></div></div>`;
+   });
+   if(count==0) list.innerHTML="<small>No other students yet — invite friends!</small>";
+   // update earnings count
+   document.getElementById("earnCount").innerText=snap.size;
+   document.getElementById("earnKsh").innerText=snap.size*10;
+ });
+}
+
+function selectUser(uid,name){
+ selectedUser=uid;
+ const box=document.getElementById("chatBox");
+ box.innerHTML=`<center>Chatting with ${name} - be respectful ❤️</center>`;
+ document.getElementById("callId").value=uid;
+ db.collection("chats").orderBy("time").onSnapshot(snap=>{
+   box.innerHTML="";
+   snap.forEach(d=>{
+     const m=d.data();
+     if((m.from==currentUser.uid && m.to==selectedUser) || (m.from==selectedUser && m.to==currentUser.uid)){
+       const div=document.createElement("div");
+       div.className="msg "+(m.from==currentUser.uid?"me":"them");
+       div.innerText=m.text;
+       box.appendChild(div);
+     }
+   });
+   box.scrollTop=box.scrollHeight;
+ });
+}
+
+function sendMsg(){
+ if(!selectedUser) return alert("Click a student to chat first");
+ const text=document.getElementById("chatInput").value.trim();
+ if(!text) return;
+ db.collection("chats").add({from:currentUser.uid,to:selectedUser,text:text,time:Date.now(),users:[currentUser.uid,selectedUser]});
+ document.getElementById("chatInput").value="";
+}
+
+function initPeer(){
+ peer=new Peer(currentUser.uid);
+ peer.on("open",id=>{document.getElementById("myPeerId").innerText=id});
+ peer.on("call",call=>{
+   call.answer(myStream);
+   call.on("stream",s=>{document.getElementById("otherVideo").srcObject=s});
+ });
+}
+
+function startCall(){
+ const id=document.getElementById("callId").value.trim();
+ if(!id) return alert("Enter Friend's ID");
+ if(!myStream) return alert("Allow camera/mic first");
+ const call=peer.call(id,myStream);
+ call.on("stream",s=>{document.getElementById("otherVideo").srcObject=s});
+ alert("Calling... tell them to accept!");
+}
+
+function copyMyId(){ navigator.clipboard.writeText(currentUser.uid).then(()=>alert("Your Call ID Copied: "+currentUser.uid)); }
+function logout(){ auth.signOut(); }
+function loadEarnings(){}
+</script>
+</body>
+</html>
